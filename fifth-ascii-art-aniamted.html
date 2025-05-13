@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>AI Ops Flow – Terminal Demo</title>
+  <style>
+    :root {
+      --bg: #0b0d0e;
+      --green: #00ff90;
+      --purple: #c38aff;
+    }
+
+    /* Header glow */
+    @keyframes glow {
+      from { text-shadow: 0 0 2px var(--purple), 0 0 6px var(--purple); }
+      to   { text-shadow: 0 0 10px var(--purple), 0 0 18px var(--purple); }
+    }
+
+    /* Old‑school blinking block cursor */
+    @keyframes blink {
+      0%, 49% { opacity: 1; }
+      50%,100% { opacity: 0; }
+    }
+
+    /* --- Layout --- */
+    body {
+      background: var(--bg);
+      color: var(--green);
+      font-family: "Courier New", monospace;
+      margin: 0;
+      padding: 0;            /* padding now handled on container for better scroll alignment */
+    }
+
+    /* Section acts as viewport trigger */
+    .terminal-section {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 3rem 1.5rem;
+      min-height: 100vh;          /* give it some vertical space in scroll story */
+      box-sizing: border-box;
+    }
+
+    h1 {
+      margin: 0 0 2.5rem 0;
+      font-size: 3.2rem;
+      color: var(--purple);
+      letter-spacing: 0.08em;
+      text-align: center;
+      animation: glow 2s ease-in-out infinite alternate;
+      line-height: 1.1;
+    }
+
+    /* Glowing frame around the diagram */
+    .frame {
+      border: 1px solid var(--green);
+      border-radius: 8px;
+      padding: 2rem 2.5rem;
+      box-shadow: 0 0 8px var(--green);
+      background: rgba(11, 13, 14, 0.85);
+      width: fit-content;
+    }
+
+    pre {
+      font-size: 1rem;
+      line-height: 1.25rem;
+      margin: 0;
+      white-space: pre-wrap; /* keep line breaks */
+      text-shadow: 0 0 3px var(--green), 0 0 6px var(--green);
+      display: inline-block;
+    }
+
+    .cursor {
+      display: inline-block;
+      vertical-align: bottom;
+      width: 9px;
+      height: 1rem;
+      background: var(--green);
+      animation: blink 1s steps(1) infinite;
+    }
+  </style>
+</head>
+<body>
+  <section class="terminal-section" id="terminal-section">
+    <h1>INITIALIZING&nbsp;SYSTEM…<br>AI Ops Flow</h1>
+
+    <div class="frame">
+      <pre id="diagram"></pre>
+    </div>
+  </section>
+
+  <script>
+    const diagramText = `           ┌──────────────┐\n Crawl --->│  Ingest Bus  │--->  Parse ↠ Enrich (LLM) ↠ Embed ↠ Store\n           └──────────────┘                    │\n                                               ▼\nUser Query ──┐                               Vector / BM25\n             │                               Retriever\n             │                                   │\n   Session-Aware Prompt Builder (pre-proc)       ▼\n             │                            RAG Orchestrator\n             │                                   │\n             └─────────────>  Best-Fit LLM  <────┘\n                                       ▲\nPost-proc metrics / redaction / FGAC   │\n                                       ▼\n                              Dashboard & Alerts`;
+
+    const pre = document.getElementById('diagram');
+    const section = document.getElementById('terminal-section');
+    let output = '';
+    let idx = 0;
+    let started = false;
+
+    function escapeHtml(ch) {
+      return ch === '<' ? '&lt;' : ch === '>' ? '&gt;' : ch === '&' ? '&amp;' : ch;
+    }
+
+    function nextDelay(ch) {
+      if (ch === '\n') return 350;
+      if (ch === '>' || ch === '┐' || ch === '┘') return 120;
+      return 15 + Math.random() * 35;
+    }
+
+    function typeNext() {
+      if (idx < diagramText.length) {
+        const ch = diagramText[idx];
+        if (ch === '\n') {
+          output += '<br>';
+        } else if (ch === ' ') {
+          output += '&nbsp;';
+        } else {
+          output += escapeHtml(ch);
+        }
+        idx++;
+        pre.innerHTML = output + '<span class="cursor"></span>';
+        setTimeout(typeNext, nextDelay(ch));
+      } else {
+        pre.innerHTML = output + '<span class="cursor"></span>'; // leave cursor blinking
+      }
+    }
+
+    /* ---------- Scroll trigger via IntersectionObserver ---------- */
+    const observer = new IntersectionObserver((entries, obs) => {
+      entries.forEach(entry => {
+        if (entry.isIntersecting && !started) {
+          started = true;
+          setTimeout(typeNext, 600); // slight dramatic pause when first visible
+          obs.disconnect();          // fire only once
+        }
+      });
+    }, { root: null, threshold: 0.4 }); // section considered visible when 40% in view
+
+    observer.observe(section);
+  </script>
+</body>
+</html>
